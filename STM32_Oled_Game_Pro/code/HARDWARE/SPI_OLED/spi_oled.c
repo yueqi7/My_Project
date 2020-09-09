@@ -4,8 +4,7 @@
 #include "oledfont.h"  	
 #include "bmp.h"
 
-//OLED的显存
-//存放格式如下.
+//OLED display memory
 //[0]0 1 2 3 ... 127	
 //[1]0 1 2 3 ... 127	
 //[2]0 1 2 3 ... 127	
@@ -14,12 +13,17 @@
 //[5]0 1 2 3 ... 127	
 //[6]0 1 2 3 ... 127	
 //[7]0 1 2 3 ... 127 			   
-static uint8_t  SIZE=12;  //
+static uint8_t  SIZE=12;  //font size
 
-
-//向SSD1106写入一个字节。
-//dat:要写入的数据/命令
-//cmd:数据/命令标志 0,表示命令;1,表示数据;
+/******************************************************************/
+//	Description:	This function write a Byte to SSD1106
+//	Author:			qi.yue
+//	param:			u8 dat: what need to write
+//					u8 cmd: flag of data or command
+//							0:command; 1:data
+//	Return:			void
+//	Note:			void
+/******************************************************************/
 void OLED_WR_Byte(u8 dat,u8 cmd)
 {	
 	u8 i;			  
@@ -45,49 +49,79 @@ void OLED_WR_Byte(u8 dat,u8 cmd)
 	OLED_DC=1;   	  
 #endif 
 } 
-	void OLED_Set_Pos(unsigned char x, unsigned char y) 
+/**************************************************/
+//	Description:	This function 
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/
+void OLED_Set_Pos(unsigned char x, unsigned char y) 
 { 
 	OLED_WR_Byte(0xb0+y,OLED_CMD);
 	OLED_WR_Byte(((x&0xf0)>>4)|0x10,OLED_CMD);
 	OLED_WR_Byte((x&0x0f)|0x01,OLED_CMD); 
-}   	  
-//开启OLED显示    
+}   
+/**************************************************/
+//	Description:	This function turn on the display
+//	Author:			qi.yue
+//	param:			void
+//	Return:			void
+//	Note:			you must call this function after
+//					initializing ssd1106
+/**************************************************/  
 void OLED_Display_On(void)
 {
-	OLED_WR_Byte(0X8D,OLED_CMD);  //SET DCDC命令
+	OLED_WR_Byte(0X8D,OLED_CMD);  //SET DCDC Command
 	OLED_WR_Byte(0X14,OLED_CMD);  //DCDC ON
 	OLED_WR_Byte(0XAF,OLED_CMD);  //DISPLAY ON
 }
-//关闭OLED显示     
+/**************************************************/
+//	Description:	This function turn off the display
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/
 void OLED_Display_Off(void)
 {
-	OLED_WR_Byte(0X8D,OLED_CMD);  //SET DCDC命令
+	OLED_WR_Byte(0X8D,OLED_CMD);  //SET DCDC Command
 	OLED_WR_Byte(0X10,OLED_CMD);  //DCDC OFF
 	OLED_WR_Byte(0XAE,OLED_CMD);  //DISPLAY OFF
 }		   			 
-//清屏函数,清完屏,整个屏幕是黑色的!和没点亮一样!!!	  
+/**************************************************/
+//	Description:	This function clean the display
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/
 void OLED_Clear(void)  
 {  
 	u8 i,n;		    
 	for(i=0;i<8;i++)  
 	{  
-		OLED_WR_Byte (0xb0+i,OLED_CMD);    //设置页地址（0~7）
-		OLED_WR_Byte (0x00,OLED_CMD);      //设置显示位置—列低地址
-		OLED_WR_Byte (0x10,OLED_CMD);      //设置显示位置—列高地址   
+		OLED_WR_Byte (0xb0+i,OLED_CMD);    //setting page（0~7）
+		OLED_WR_Byte (0x00,OLED_CMD);      //setting display position - addr of low col
+		OLED_WR_Byte (0x10,OLED_CMD);      //setting display position - addr of hagh col
 		for(n=0;n<128;n++)OLED_WR_Byte(0,OLED_DATA); 
-	} //更新显示
+	} 
 }
-
-
-//在指定位置显示一个字符,包括部分字符
-//x:0~127
-//y:0~63
-//mode:0,反白显示;1,正常显示				 
-//size:选择字体 16/12 
+/**************************************************/
+//	Description:	This function show a character 
+//					at specified position
+//	Author:			qi.yue
+//	param:			u8 x: x:0~127
+//					u8 y: y:0~63
+//					u8 chr:the character witch will be displayed
+//					u8 mode : character color 0:black, 1:white
+//	Return:			void
+//	Note:			void
+/**************************************************/
 void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 mode)
 {      	
 	unsigned char c=0,i=0;	
-		c=chr-' ';//得到偏移后的值			
+		c=chr-' ';	
 		if(x>Max_Column-1){x=0;y=y+2;}
 		if(SIZE ==16)
 			{
@@ -102,22 +136,22 @@ void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 mode)
 				OLED_Set_Pos(x,y+1);
 				for(i=0;i<6;i++)
 				OLED_WR_Byte(F6x8[c][i]^(0xff*mode),OLED_DATA);
-				
 			}
 }
-//m^n函数
 u32 oled_pow(u8 m,u8 n)
 {
 	u32 result=1;	 
 	while(n--)result*=m;    
 	return result;
-}				  
-//显示2个数字
-//x,y :起点坐标	 
-//len :数字的位数
-//size:字体大小
-//mode:模式	0,填充模式;1,叠加模式
-//num:数值(0~4294967295);	 		  
+}	
+
+/**************************************************/
+//	Description:	This function show a number
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/ 		  
 void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 size)
 {         	
 	u8 t,temp;
@@ -137,7 +171,13 @@ void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 size)
 	 	OLED_ShowChar(x+(size/2)*t,y,temp+'0',0); 
 	}
 } 
-//显示一个字符号串
+/**************************************************/
+//	Description:	This function show a string
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/ 	
 void OLED_ShowString(u8 x,u8 y,u8 *chr,u8 mode)
 {
 	unsigned char j=0;
@@ -150,7 +190,13 @@ void OLED_ShowString(u8 x,u8 y,u8 *chr,u8 mode)
 			j++;
 	}
 }
-//显示汉字
+/**************************************************/
+//	Description:	This function show a Chinese word
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/ 	
 void OLED_ShowCHinese(u8 x,u8 y,u8 no,u8 size)
 {      			    
 	u8 t,adder=0;
@@ -168,6 +214,13 @@ void OLED_ShowCHinese(u8 x,u8 y,u8 no,u8 size)
       }					
 }
 /***********功能描述：显示显示BMP图片128×64起始点坐标(x,y),x的范围0～127，y为页的范围0～7*****************/
+/**************************************************/
+//	Description:	This function show a bmp picture
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/ 	
 void OLED_DrawBMP(unsigned char x0, unsigned char y0,unsigned char x1, unsigned char y1,unsigned char BMP[])
 { 	
  unsigned int j=0;
@@ -185,8 +238,14 @@ void OLED_DrawBMP(unsigned char x0, unsigned char y0,unsigned char x1, unsigned 
 	}
 } 
 
-
-//初始化SSD1306					    
+/**************************************************/
+//	Description:	This function initionlized SSD1306
+//	Author:			qi.yue
+//	param:			
+//	Return:			void
+//	Note:			void
+/**************************************************/ 	
+//				    
 void SPI_OLED_Init(void)
 { 	 	 
 	GPIO_InitTypeDef 	MyGPIO;
@@ -283,15 +342,16 @@ void OLED_Printf(uint8_t x,uint8_t y,uint8_t mode,uint16_t size ,const char *str
 	va_arg(ap,int);
 	va_end(ap);
 }
-/***************************************************************************/
-/****************************功能函数***************************************/
-/***************************************************************************/
-/***************************************************************************/
-//画点 
-//x:0~127
-//y:0~63
-//t:1(OLED_LED_LIGHTUP) 填充 ; 0(OLED_LED_EXTINGUISH),清空	
-u8 OLED_GRAM[8][128];			//定义模拟显存
+/****************************Function of Drawing***************************************/
+u8 OLED_GRAM[8][128];
+/**************************************************************/
+//	Description:	This function can draw a point
+//	Author:			qi.yue
+//	param:			u8 x,y:	position of the point
+//					ut t:	1 : light on; 0 :light off
+//	Return:			void
+//	Note:			x 0~127; y,0~63
+/**************************************************************/
 void OLED_DrawPoint(u8 x,u8 y,u8 t)
 {
 	u8 pos,bx,temp=0;
@@ -302,9 +362,16 @@ void OLED_DrawPoint(u8 x,u8 y,u8 t)
 	if(t)OLED_GRAM[pos][x]|=temp;
 	else OLED_GRAM[pos][x]&=~temp;	    
 }
-//画线函数
-//起点x1 y1  ;终点x2 y2
-//color 1 亮  ；0 灭
+/************************************************************/
+//	Description:	This function can draw a line
+//	Author:			qi.yue 
+//	param:			int x1,y1:	starting point
+//					int x2,y2:	ending point
+//					int color:	the pixel light on or off,
+//								on : 1, off : 0
+//	Return:			void
+//	Note:			x1,x2 0~127; y1,y2 0~63
+/***********************************************************/
 void OLED_DrawLine(int x1,int y1,int x2,int y2,int color)
 {
     int dx,dy,e;
@@ -420,9 +487,16 @@ void OLED_DrawLine(int x1,int y1,int x2,int y2,int color)
         }   
     }
 }
-//-------------画圆函数。参数：圆心，半径，颜色----------
-//        画1/8圆 然后其他7/8对称画
-//          ---------------->X
+/**********************************************************/
+//	Description:	This function can draw a circle. draw 1/8 of 
+//					circle,then draw others parts based on symmetry
+//	Author:			qi.yue 
+//	param:			int x,y:	The position ot the center of the circle
+//					int r:		the range of the circle
+//					color:		the pixel light on or off,
+//								on : 1, off : 0
+//	Return:			void
+//	Note:   ---------------->X
 //          |(0,0)   0
 //          |     7     1
 //          |    6       2
@@ -430,6 +504,7 @@ void OLED_DrawLine(int x1,int y1,int x2,int y2,int color)
 //       (Y)V        4
 //
 //      L = x^2 + y^2 - r^2
+/***********************************************************/
 void OLED_DrawCircle(int x, int y, int r, int color)
 {
     int a, b, num;
@@ -457,7 +532,15 @@ void OLED_DrawCircle(int x, int y, int r, int color)
     }
 }
 
-
+/**********************************************************/
+//	Description:	This function can draw a rectangle
+//	Author:			qi.yue 
+//	param:			u8 x1,y1:	starting point
+//					u8 x2,y2:	ending point
+//					mode:		the pixel light on or off,
+//								on : 1, off : 0
+//	Return:			void
+//	Note:			x,x0 0~127; Y,Y0 0~63
 void OLED_DrawRectangle(u8 x1,u8 y1,u8 x2,u8 y2,u8 mode)
 {
 	OLED_DrawLine(x1,y1,x2,y1,mode);
@@ -478,6 +561,15 @@ void OLED_Refresh_GRAM(void)
 	    }
 	}
 }
+/**********************************************************/
+//	Description:	This function will clean the anaiog 
+//					Oled memory OLED_GRAM[8][128]
+//	Author:			qi.yue
+//	param:			void
+//	Return:			void
+//	Note:			None
+/*********************************************************/
+
 void OLED_Clean_GRAM(void)
 {
  unsigned char x,y;
@@ -485,4 +577,21 @@ void OLED_Clean_GRAM(void)
 	for(y=0;y<7;y++)
     for(x=0;x<127;x++)         
 				OLED_GRAM[y][x]=0;	    	
+}
+/**********************************************************/
+//	Description:	This function will draw a grid on OLED
+//	Author:			qi.yue
+//	param:			char x0:	initial x position 0~127
+//					char y0:	initial y position 0~63
+//					char col:	the grid's columns
+//					char lin:	the grid's lines
+//					char size:	the size of every grid
+//	Return:			void
+//	Note:			None
+/*********************************************************/
+void Draw_Grid(char x0,char y0,char x,char y,char n)
+{
+
+
+
 }
