@@ -9,6 +9,7 @@
 #include "key.h"
 #include "led.h"
 #include "spi_oled.h"
+#include "spi.h"
 
 #define  POUT(ADDR,NUM)    *((volatile unsigned long *)((((GPIO##ADDR##_BASE + 12) & 0xF0000000) + 0x2000000 + (((GPIO##ADDR##_BASE + 12) & 0xFFFFF) << 5) + (NUM << 2)))) 
 

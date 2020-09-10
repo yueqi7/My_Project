@@ -1,6 +1,7 @@
-#include "spi_oled.h"
 #include "stdlib.h"
 #include "stdarg.h"
+#include "spi.h"
+#include "spi_oled.h"
 #include "oledfont.h"  	
 #include "bmp.h"
 
@@ -15,40 +16,87 @@
 //[7]0 1 2 3 ... 127 			   
 static uint8_t  SIZE=12;  //font size
 
-/******************************************************************/
-//	Description:	This function write a Byte to SSD1106
+static void OLED_Write(uint8_t data,uint8_t mode)
+{
+	OLED_CS=0;
+	OLED_DC=mode;
+	SPI_ReadWriteByte(data);
+	OLED_CS=1;
+}
+
+/**************************************************/
+//	Description:	This function initionlized SSD1306
 //	Author:			qi.yue
-//	param:			u8 dat: what need to write
-//					u8 cmd: flag of data or command
-//							0:command; 1:data
+//	param:			
 //	Return:			void
 //	Note:			void
-/******************************************************************/
-void OLED_WR_Byte(u8 dat,u8 cmd)
-{	
-	u8 i;			  
-#ifdef USING_DC	
-	if(cmd)
-	  OLED_DC=1;
-	else 
-	  OLED_DC=0;	
-	OLED_CS=0;
-#endif 
-	for(i=0;i<8;i++)
-	{			  
-		OLED_SCLK=0;
-		if(dat&0x80)
-		   OLED_SDIN=1;
-		else 
-		   OLED_SDIN=0;
-		OLED_SCLK=1;
-		dat<<=1;   
-	}				 		  
-	OLED_CS=1;
-#ifdef USING_CS	
-	OLED_DC=1;   	  
-#endif 
-} 
+/**************************************************/ 	
+//				    
+void OLED_Init(void)
+{ 	 	 
+	GPIO_InitTypeDef 	MyGPIO;
+
+#ifdef USING_DC
+	RCC_APB2PeriphClockCmd(RCC_DC_PORT, ENABLE );
+	MyGPIO.GPIO_Pin 	= GPIO_Pin_DC;	
+ 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
+	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
+ 	GPIO_Init(DC_PORT, &MyGPIO);	
+	OLED_DC  = 1;
+#endif
+	RCC_APB2PeriphClockCmd(RCC_CS_PORT, ENABLE );
+	MyGPIO.GPIO_Pin 	= GPIO_Pin_CS;	
+ 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
+	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
+ 	GPIO_Init(CS_PORT, &MyGPIO);	  
+	OLED_CS	 = 1;
+	#ifdef USING_RST
+	RCC_APB2PeriphClockCmd(RCC_RST_PORT, ENABLE );
+	MyGPIO.GPIO_Pin 	= GPIO_Pin_RST;	
+ 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
+	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
+ 	GPIO_Init(RST_PORT, &MyGPIO);
+	OLED_RST = 1;
+	delay_ms(200);
+	OLED_RST = 0;
+	delay_ms(200);
+	OLED_RST = 1;
+#endif
+			  
+	OLED_Write(0xAE,OLED_CMD);//--turn off oled panel
+	OLED_Write(0x00,OLED_CMD);//---set low column address
+	OLED_Write(0x10,OLED_CMD);//---set high column address
+	OLED_Write(0x40,OLED_CMD);//--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
+	OLED_Write(0x81,OLED_CMD);//--set contrast control register
+	OLED_Write(0xCF,OLED_CMD); // Set SEG Output Current Brightness
+	OLED_Write(0xA1,OLED_CMD);//--Set SEG/Column Mapping     0xa0左右反置 0xa1正常
+	OLED_Write(0xC8,OLED_CMD);//Set COM/Row Scan Direction   0xc0上下反置 0xc8正常
+	OLED_Write(0xA6,OLED_CMD);//--set normal display
+	OLED_Write(0xA8,OLED_CMD);//--set multiplex ratio(1 to 64)
+	OLED_Write(0x3f,OLED_CMD);//--1/64 duty
+	OLED_Write(0xD3,OLED_CMD);//-set display offset	Shift Mapping RAM Counter (0x00~0x3F)
+	OLED_Write(0x00,OLED_CMD);//-not offset
+	OLED_Write(0xd5,OLED_CMD);//--set display clock divide ratio/oscillator frequency
+	OLED_Write(0x80,OLED_CMD);//--set divide ratio, Set Clock as 100 Frames/Sec
+	OLED_Write(0xD9,OLED_CMD);//--set pre-charge period
+	OLED_Write(0xF1,OLED_CMD);//Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
+	OLED_Write(0xDA,OLED_CMD);//--set com pins hardware configuration
+	OLED_Write(0x12,OLED_CMD);
+	OLED_Write(0xDB,OLED_CMD);//--set vcomh
+	OLED_Write(0x40,OLED_CMD);//Set VCOM Deselect Level
+	OLED_Write(0x20,OLED_CMD);//-Set Page Addressing Mode (0x00/0x01/0x02)
+	OLED_Write(0x02,OLED_CMD);//
+	OLED_Write(0x8D,OLED_CMD);//--set Charge Pump enable/disable
+	OLED_Write(0x14,OLED_CMD);//--set(0x10) disable
+	OLED_Write(0xA4,OLED_CMD);// Disable Entire Display On (0xa4/0xa5)
+	OLED_Write(0xA6,OLED_CMD);// Disable Inverse Display On (0xa6/a7) 
+	OLED_Write(0xAF,OLED_CMD);//--turn on oled panel
+	
+	OLED_Display_On(); /*display ON*/ 
+	OLED_Clear(0);
+	delay_ms(5);
+	OLED_Clear(1);
+}
 /**************************************************/
 //	Description:	This function 
 //	Author:			qi.yue
@@ -58,9 +106,9 @@ void OLED_WR_Byte(u8 dat,u8 cmd)
 /**************************************************/
 void OLED_Set_Pos(unsigned char x, unsigned char y) 
 { 
-	OLED_WR_Byte(0xb0+y,OLED_CMD);
-	OLED_WR_Byte(((x&0xf0)>>4)|0x10,OLED_CMD);
-	OLED_WR_Byte((x&0x0f)|0x01,OLED_CMD); 
+	OLED_Write(0xb0+y,OLED_CMD);
+	OLED_Write(((x&0xf0)>>4)|0x10,OLED_CMD);
+	OLED_Write((x&0x0f)|0x01,OLED_CMD); 
 }   
 /**************************************************/
 //	Description:	This function turn on the display
@@ -72,9 +120,9 @@ void OLED_Set_Pos(unsigned char x, unsigned char y)
 /**************************************************/  
 void OLED_Display_On(void)
 {
-	OLED_WR_Byte(0X8D,OLED_CMD);  //SET DCDC Command
-	OLED_WR_Byte(0X14,OLED_CMD);  //DCDC ON
-	OLED_WR_Byte(0XAF,OLED_CMD);  //DISPLAY ON
+	OLED_Write(0X8D,OLED_CMD);  //SET DCDC Command
+	OLED_Write(0X14,OLED_CMD);  //DCDC ON
+	OLED_Write(0XAF,OLED_CMD);  //DISPLAY ON
 }
 /**************************************************/
 //	Description:	This function turn off the display
@@ -85,9 +133,9 @@ void OLED_Display_On(void)
 /**************************************************/
 void OLED_Display_Off(void)
 {
-	OLED_WR_Byte(0X8D,OLED_CMD);  //SET DCDC Command
-	OLED_WR_Byte(0X10,OLED_CMD);  //DCDC OFF
-	OLED_WR_Byte(0XAE,OLED_CMD);  //DISPLAY OFF
+	OLED_Write(0X8D,OLED_CMD);  //SET DCDC Command
+	OLED_Write(0X10,OLED_CMD);  //DCDC OFF
+	OLED_Write(0XAE,OLED_CMD);  //DISPLAY OFF
 }		   			 
 /**************************************************/
 //	Description:	This function clean the display
@@ -96,15 +144,16 @@ void OLED_Display_Off(void)
 //	Return:			void
 //	Note:			void
 /**************************************************/
-void OLED_Clear(void)  
+void OLED_Clear(uint8_t mode)  
 {  
-	u8 i,n;		    
+	u8 i,n;
+	if(mode)mode=0xff;
 	for(i=0;i<8;i++)  
 	{  
-		OLED_WR_Byte (0xb0+i,OLED_CMD);    //setting page（0~7）
-		OLED_WR_Byte (0x00,OLED_CMD);      //setting display position - addr of low col
-		OLED_WR_Byte (0x10,OLED_CMD);      //setting display position - addr of hagh col
-		for(n=0;n<128;n++)OLED_WR_Byte(0,OLED_DATA); 
+		OLED_Write (0xb0+i,OLED_CMD);    //setting page（0~7）
+		OLED_Write (0x00,OLED_CMD);      //setting display position - addr of low col
+		OLED_Write (0x10,OLED_CMD);      //setting display position - addr of hagh col
+		for(n=0;n<128;n++)OLED_Write(mode,OLED_DATA); 
 	} 
 }
 /**************************************************/
@@ -127,15 +176,15 @@ void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 mode)
 			{
 			OLED_Set_Pos(x,y);	
 			for(i=0;i<8;i++)
-			OLED_WR_Byte(F8X16[c*16+i]^(0xff*mode),OLED_DATA);
+			OLED_Write(F8X16[c*16+i]^(0xff*mode),OLED_DATA);
 			OLED_Set_Pos(x,y+1);
 			for(i=0;i<8;i++)
-			OLED_WR_Byte(F8X16[c*16+i+8]^(0xff*mode),OLED_DATA);
+			OLED_Write(F8X16[c*16+i+8]^(0xff*mode),OLED_DATA);
 			}
 			else {	
 				OLED_Set_Pos(x,y+1);
 				for(i=0;i<6;i++)
-				OLED_WR_Byte(F6x8[c][i]^(0xff*mode),OLED_DATA);
+				OLED_Write(F6x8[c][i]^(0xff*mode),OLED_DATA);
 			}
 }
 u32 oled_pow(u8 m,u8 n)
@@ -203,13 +252,13 @@ void OLED_ShowCHinese(u8 x,u8 y,u8 no,u8 size)
 	OLED_Set_Pos(x,y);	
     for(t=0;t<size;t++)
 		{
-				OLED_WR_Byte(Hzk[2*no][t],OLED_DATA);
+				OLED_Write(Hzk[2*no][t],OLED_DATA);
 				adder+=1;
      }	
 		OLED_Set_Pos(x,y+1);	
     for(t=0;t<size;t++)
 			{	
-				OLED_WR_Byte(Hzk[2*no+1][t],OLED_DATA);
+				OLED_Write(Hzk[2*no+1][t],OLED_DATA);
 				adder+=1;
       }					
 }
@@ -233,97 +282,12 @@ void OLED_DrawBMP(unsigned char x0, unsigned char y0,unsigned char x1, unsigned 
 		OLED_Set_Pos(x0,y);
     for(x=x0;x<x1;x++)
 	    {      
-	    	OLED_WR_Byte(BMP[j++],OLED_DATA);	    	
+	    	OLED_Write(BMP[j++],OLED_DATA);	    	
 	    }
 	}
 } 
 
-/**************************************************/
-//	Description:	This function initionlized SSD1306
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
-/**************************************************/ 	
-//				    
-void SPI_OLED_Init(void)
-{ 	 	 
-	GPIO_InitTypeDef 	MyGPIO;
 
-	RCC_APB2PeriphClockCmd(RCC_SCLK_PORT, ENABLE );
-	MyGPIO.GPIO_Pin 	= GPIO_Pin_SCLK;	
- 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
-	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
- 	GPIO_Init(SCKL_PORT, &MyGPIO);	
-	OLED_SCLK  = 1;
-	
-	RCC_APB2PeriphClockCmd(RCC_SDIN_PORT, ENABLE );
-	MyGPIO.GPIO_Pin 	= GPIO_Pin_SDIN;	
- 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
-	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
- 	GPIO_Init(SDIN_PORT, &MyGPIO);	
-	OLED_SDIN  = 1;
-	
-#ifdef USING_DC
-	RCC_APB2PeriphClockCmd(RCC_DC_PORT, ENABLE );
-	MyGPIO.GPIO_Pin 	= GPIO_Pin_DC;	
- 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
-	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
- 	GPIO_Init(DC_PORT, &MyGPIO);	
-	OLED_DC  = 1;
-#endif
-	RCC_APB2PeriphClockCmd(RCC_CS_PORT, ENABLE );
-	MyGPIO.GPIO_Pin 	= GPIO_Pin_CS;	
- 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
-	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
- 	GPIO_Init(CS_PORT, &MyGPIO);	  
-	OLED_CS	 = 1;
-	#ifdef USING_RST
-	RCC_APB2PeriphClockCmd(RCC_RST_PORT, ENABLE );
-	MyGPIO.GPIO_Pin 	= GPIO_Pin_RST;	
- 	MyGPIO.GPIO_Mode 	= GPIO_Mode_Out_PP; 		 
-	MyGPIO.GPIO_Speed	= GPIO_Speed_50MHz;
- 	GPIO_Init(RST_PORT, &MyGPIO);
-	OLED_RST = 1;
-	delay_ms(100);
-	OLED_RST = 0;
-	delay_ms(100);
-	OLED_RST = 1; 
-#endif
-			  
-	OLED_WR_Byte(0xAE,OLED_CMD);//--turn off oled panel
-	OLED_WR_Byte(0x00,OLED_CMD);//---set low column address
-	OLED_WR_Byte(0x10,OLED_CMD);//---set high column address
-	OLED_WR_Byte(0x40,OLED_CMD);//--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
-	OLED_WR_Byte(0x81,OLED_CMD);//--set contrast control register
-	OLED_WR_Byte(0xCF,OLED_CMD); // Set SEG Output Current Brightness
-	OLED_WR_Byte(0xA1,OLED_CMD);//--Set SEG/Column Mapping     0xa0左右反置 0xa1正常
-	OLED_WR_Byte(0xC8,OLED_CMD);//Set COM/Row Scan Direction   0xc0上下反置 0xc8正常
-	OLED_WR_Byte(0xA6,OLED_CMD);//--set normal display
-	OLED_WR_Byte(0xA8,OLED_CMD);//--set multiplex ratio(1 to 64)
-	OLED_WR_Byte(0x3f,OLED_CMD);//--1/64 duty
-	OLED_WR_Byte(0xD3,OLED_CMD);//-set display offset	Shift Mapping RAM Counter (0x00~0x3F)
-	OLED_WR_Byte(0x00,OLED_CMD);//-not offset
-	OLED_WR_Byte(0xd5,OLED_CMD);//--set display clock divide ratio/oscillator frequency
-	OLED_WR_Byte(0x80,OLED_CMD);//--set divide ratio, Set Clock as 100 Frames/Sec
-	OLED_WR_Byte(0xD9,OLED_CMD);//--set pre-charge period
-	OLED_WR_Byte(0xF1,OLED_CMD);//Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
-	OLED_WR_Byte(0xDA,OLED_CMD);//--set com pins hardware configuration
-	OLED_WR_Byte(0x12,OLED_CMD);
-	OLED_WR_Byte(0xDB,OLED_CMD);//--set vcomh
-	OLED_WR_Byte(0x40,OLED_CMD);//Set VCOM Deselect Level
-	OLED_WR_Byte(0x20,OLED_CMD);//-Set Page Addressing Mode (0x00/0x01/0x02)
-	OLED_WR_Byte(0x02,OLED_CMD);//
-	OLED_WR_Byte(0x8D,OLED_CMD);//--set Charge Pump enable/disable
-	OLED_WR_Byte(0x14,OLED_CMD);//--set(0x10) disable
-	OLED_WR_Byte(0xA4,OLED_CMD);// Disable Entire Display On (0xa4/0xa5)
-	OLED_WR_Byte(0xA6,OLED_CMD);// Disable Inverse Display On (0xa6/a7) 
-	OLED_WR_Byte(0xAF,OLED_CMD);//--turn on oled panel
-	
-	OLED_WR_Byte(0xAF,OLED_CMD); /*display ON*/ 
-	OLED_Clear();
-	OLED_Set_Pos(0,0); 	
-} 
 ///*
 //功能：OLED打印
 //x		：起始横坐标 0-127
@@ -331,17 +295,17 @@ void SPI_OLED_Init(void)
 //mode：反白显示	 0：关闭	1：开启
 //size：字体大小	 12：6*8		16：8*16
 //*/
-void OLED_Printf(uint8_t x,uint8_t y,uint8_t mode,uint16_t size ,const char *str ,...)
-{
-	va_list ap;
-	int cnt;
-	char val;
-	SIZE=size;
-	va_start(ap,str);
+//void OLED_Printf(uint8_t x,uint8_t y,uint8_t mode,uint16_t size ,const char *str ,...)
+//{
+//	va_list ap;
+//	int cnt;
+//	char val;
+//	SIZE=size;
+//	va_start(ap,str);
 
-	va_arg(ap,int);
-	va_end(ap);
-}
+//	va_arg(ap,int);
+//	va_end(ap);
+//}
 /****************************Function of Drawing***************************************/
 u8 OLED_GRAM[8][128];
 /**************************************************************/
@@ -557,7 +521,7 @@ void OLED_Refresh_GRAM(void)
 		OLED_Set_Pos(0,y);
     for(x=0;x<127;x++)
 	    {      
-	    	OLED_WR_Byte(OLED_GRAM[y][x],OLED_DATA);	    	
+	    	OLED_Write(OLED_GRAM[y][x],OLED_DATA);	    	
 	    }
 	}
 }
@@ -589,9 +553,9 @@ void OLED_Clean_GRAM(void)
 //	Return:			void
 //	Note:			None
 /*********************************************************/
-void Draw_Grid(char x0,char y0,char x,char y,char n)
-{
+//void Draw_Grid(char x0,char y0,char x,char y,char n)
+//{
 
 
 
-}
+//}
