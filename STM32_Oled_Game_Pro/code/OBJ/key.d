@@ -38,3 +38,5 @@
 ..\obj\key.o: ..\HARDWARE\key\key.h
 ..\obj\key.o: ..\HARDWARE\led\led.h
 ..\obj\key.o: ..\HARDWARE\SPI_OLED\spi_oled.h
+..\obj\key.o: ..\HARDWARE\SPI\spi.h
+..\obj\key.o: D:\software\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h

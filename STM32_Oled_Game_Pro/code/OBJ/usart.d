@@ -37,3 +37,5 @@
 ..\obj\usart.o: ..\HARDWARE\key\key.h
 ..\obj\usart.o: ..\HARDWARE\led\led.h
 ..\obj\usart.o: ..\HARDWARE\SPI_OLED\spi_oled.h
+..\obj\usart.o: ..\HARDWARE\SPI\spi.h
+..\obj\usart.o: D:\software\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h

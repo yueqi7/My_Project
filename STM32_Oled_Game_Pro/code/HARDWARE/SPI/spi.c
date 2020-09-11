@@ -1,49 +1,73 @@
 #include "spi.h"
 
+static SPI_InitTypeDef  SPI_config={
+	SPI_Direction_2Lines_FullDuplex,
+	SPI_Mode_Master,
+	SPI_DataSize_8b,
+	SPI_CPOL_Low,
+	SPI_CPHA_1Edge,
+	SPI_NSS_Soft,
+	SPI_BaudRatePrescaler_128,
+	7
+};	
 
-void MySPI_Init(void)
+bool 	SPI_IO_EN(SPI_TypeDef* SPIx)
+{    
+	GPIO_InitTypeDef GPIO_Structure;
+	
+	GPIO_Structure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Structure.GPIO_Speed = GPIO_Speed_50MHz;
+	if(SPI1==SPIx){	
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1,  ENABLE );
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE );
+		GPIO_Structure.GPIO_Pin = GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7;
+		GPIO_Init(GPIOA, &GPIO_Structure);
+		GPIO_SetBits(GPIOA,GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7);
+	}
+	else if	(SPI2==SPIx)	{
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2,  ENABLE );
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE );
+		GPIO_Structure.GPIO_Pin = GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15;
+		GPIO_Init(GPIOB, &GPIO_Structure);
+		GPIO_SetBits(GPIOB,GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
+	} 
+#ifdef STM32F10X_HD	
+	else if (SPI3==SPIx)	{
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3,  ENABLE );
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE );
+		GPIO_Structure.GPIO_Pin = GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5;
+		GPIO_Init(GPIOB, &GPIO_Structure);
+		GPIO_SetBits(GPIOB,GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5); 
+	}	
+#endif
+	else	return false;
+	return true;
+}
+//根据SPI_config配置SPIx若配置不同情先给SPI_config赋值再调用SPIx_Init()
+bool SPIx_Init(SPI_TypeDef* SPIx )
 {
-	SPI_InitTypeDef  SPI_Init_config;
-	GPIO_InitTypeDef 	GPIO_InitStructure;
-	
-	RCC_SPI; 
-	RCC_APB2PeriphClockCmd(	RCC_GPIO, ENABLE );//PORTB时钟使能 
-	GPIO_InitStructure.GPIO_Pin = SPI_SCLK_IO|SPI_MISO_IO|SPI_MOSI_IO;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //PB13/14/15复用推挽输出 
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(SPI_GPIO_PORT, &GPIO_InitStructure);//初始化GPIOB
- 	GPIO_SetBits(SPI_GPIO_PORT,SPI_SCLK_IO|SPI_MISO_IO|SPI_MOSI_IO);  //PB13/14/15上拉
-
-	SPI_Init_config.SPI_Direction		= SPI_Direction_2Lines_FullDuplex;  //设置SPI单向或者双向的数据模式:SPI设置为双线双向全双工
-	SPI_Init_config.SPI_Mode 				= SPI_Mode_Master;		//设置SPI工作模式:设置为主SPI
-	SPI_Init_config.SPI_DataSize		= SPI_DataSize_8b;		//设置SPI的数据大小:SPI发送接收8位帧结构
-	SPI_Init_config.SPI_CPOL 				= SPI_CPOL_Low;		//选择了串行时钟的稳态:空闲时钟低
-	SPI_Init_config.SPI_CPHA 				= SPI_CPHA_1Edge;	//数据捕获(采样)于第1个时钟沿
-	SPI_Init_config.SPI_NSS					= SPI_NSS_Soft;//SPI_NSS_Soft;		//NSS信号由硬件（NSS管脚）还是软件（使用SSI位）管理:内部NSS信号有SSI位控制
-	SPI_Init_config.SPI_BaudRatePrescaler 	= SPI_BaudRatePrescaler_256;		//定义波特率预分频的值:波特率预分频值为256
-	SPI_Init_config.SPI_FirstBit 			= SPI_FirstBit_MSB;	//指定数据传输从MSB位还是LSB位开始:数据传输从MSB位开始
-	SPI_Init_config.SPI_CRCPolynomial 		= 7;	//CRC值计算的多项式
-	
-	SPI_Init(MYSPI, &SPI_Init_config);  //根据SPI_InitStruct中指定的参数初始化外设SPIx寄存器
-	SPI_Cmd(MYSPI, ENABLE); //使能SPI外设
+	if(!SPI_IO_EN(SPIx)) return false;
+	SPI_Init(SPIx, &SPI_config);
+	SPI_Cmd(SPIx, ENABLE);
+	return true;
 } 
 
 
-uint8_t SPI_ReadWriteByte(uint8_t spi_byte)
+uint8_t SPI_ReadWriteByte(SPI_TypeDef* SPIx,uint8_t spi_byte)
 {		
 	u8 retry=0;				 	
-	while (SPI_I2S_GetFlagStatus(MYSPI, SPI_I2S_FLAG_TXE) == RESET) //检查指定的SPI标志位设置与否:发送缓存空标志位
+	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET) //TX_FIFO_EMPTY
 		{
 		retry++;
 		if(retry>200)return 0;
 		}			  
-	SPI_I2S_SendData(MYSPI, spi_byte); //通过外设SPIx发送一个数据
+	SPI_I2S_SendData(SPIx, spi_byte); 
 	retry=0;
 
-	while (SPI_I2S_GetFlagStatus(MYSPI, SPI_I2S_FLAG_RXNE) == RESET) //检查指定的SPI标志位设置与否:接受缓存非空标志位
+	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_RXNE) == RESET) //RX_FIFO_NOT_EMPTY
 		{
 		retry++;
 		if(retry>200)return 0;
 		}	  						    
-	return SPI_I2S_ReceiveData(MYSPI); //返回通过SPIx最近接收的数据			
+	return SPI_I2S_ReceiveData(SPIx); //返回通过SPIx最近接收的数据			
 }

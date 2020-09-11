@@ -36,7 +36,7 @@
 #define OLED_DATA 	1
 
 static void OLED_Write(uint8_t data,uint8_t mode);
-void OLED_Init(void);
+void OLED_Init(SPI_TypeDef* SPIx,uint8_t mode);
 void OLED_Display_On(void);
 void OLED_Display_Off(void);	   							   		    
 void OLED_Clear(uint8_t mode);

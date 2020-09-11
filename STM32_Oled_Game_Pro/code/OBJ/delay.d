@@ -38,3 +38,5 @@
 ..\obj\delay.o: ..\HARDWARE\key\key.h
 ..\obj\delay.o: ..\HARDWARE\led\led.h
 ..\obj\delay.o: ..\HARDWARE\SPI_OLED\spi_oled.h
+..\obj\delay.o: ..\HARDWARE\SPI\spi.h
+..\obj\delay.o: D:\software\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h

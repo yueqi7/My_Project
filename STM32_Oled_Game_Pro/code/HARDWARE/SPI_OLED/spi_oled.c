@@ -15,12 +15,12 @@
 //[6]0 1 2 3 ... 127	
 //[7]0 1 2 3 ... 127 			   
 static uint8_t  SIZE=12;  //font size
-
+static  SPI_TypeDef* OLED_SPI=NULL;
 static void OLED_Write(uint8_t data,uint8_t mode)
 {
 	OLED_CS=0;
 	OLED_DC=mode;
-	SPI_ReadWriteByte(data);
+	SPI_ReadWriteByte(OLED_SPI,data);
 	OLED_CS=1;
 }
 
@@ -32,9 +32,10 @@ static void OLED_Write(uint8_t data,uint8_t mode)
 //	Note:			void
 /**************************************************/ 	
 //				    
-void OLED_Init(void)
+void OLED_Init(SPI_TypeDef* SPIx,uint8_t mode)
 { 	 	 
 	GPIO_InitTypeDef 	MyGPIO;
+	OLED_SPI=SPIx;
 
 #ifdef USING_DC
 	RCC_APB2PeriphClockCmd(RCC_DC_PORT, ENABLE );
@@ -62,7 +63,7 @@ void OLED_Init(void)
 	delay_ms(200);
 	OLED_RST = 1;
 #endif
-			  
+
 	OLED_Write(0xAE,OLED_CMD);//--turn off oled panel
 	OLED_Write(0x00,OLED_CMD);//---set low column address
 	OLED_Write(0x10,OLED_CMD);//---set high column address
@@ -93,9 +94,8 @@ void OLED_Init(void)
 	OLED_Write(0xAF,OLED_CMD);//--turn on oled panel
 	
 	OLED_Display_On(); /*display ON*/ 
-	OLED_Clear(0);
-	delay_ms(5);
-	OLED_Clear(1);
+	OLED_Clear(mode);
+
 }
 /**************************************************/
 //	Description:	This function 
