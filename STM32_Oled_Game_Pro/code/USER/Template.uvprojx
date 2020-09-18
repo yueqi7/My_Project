@@ -338,7 +338,7 @@
               <MiscControls>--c99</MiscControls>
               <Define>STM32F10X_MD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\CORE;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\HARDWARE\adc;..\HARDWARE\key;..\HARDWARE\led;..\HARDWARE\SPI;..\HARDWARE\SPI_OLED;..\u8glib_arm_v1.18.1\src</IncludePath>
+              <IncludePath>..\USER;..\CORE;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\HARDWARE\adc;..\HARDWARE\key;..\HARDWARE\led;..\HARDWARE\SPI;..\HARDWARE\SPI_OLED;..\HARDWARE\GUI</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -580,7 +580,14 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>README</GroupName>
+          <GroupName>GUI</GroupName>
+          <Files>
+            <File>
+              <FileName>oledgui.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GUI\oledgui.c</FilePath>
+            </File>
+          </Files>
         </Group>
       </Groups>
     </Target>

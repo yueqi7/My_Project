@@ -1,38 +1,15 @@
-#include "stdlib.h"
-#include "stdarg.h"
-#include "spi.h"
 #include "spi_oled.h"
-#include "oledfont.h"  	
 #include "bmp.h"
+#include "oledfont.h"  	
 
-//OLED display memory
-//[0]0 1 2 3 ... 127	
-//[1]0 1 2 3 ... 127	
-//[2]0 1 2 3 ... 127	
-//[3]0 1 2 3 ... 127	
-//[4]0 1 2 3 ... 127	
-//[5]0 1 2 3 ... 127	
-//[6]0 1 2 3 ... 127	
-//[7]0 1 2 3 ... 127 			   
-static uint8_t  SIZE=12;  //font size
 static  SPI_TypeDef* OLED_SPI=NULL;
-static void OLED_Write(uint8_t data,uint8_t mode)
-{
-	OLED_CS=0;
-	OLED_DC=mode;
-	SPI_ReadWriteByte(OLED_SPI,data);
-	OLED_CS=1;
-}
-
 /**************************************************/
 //	Description:	This function initionlized SSD1306
 //	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
+//	param:			choose the SPI for OLED; if mode=0,
+//							oled will clear to light off,else on.
 /**************************************************/ 	
-//				    
-void OLED_Init(SPI_TypeDef* SPIx,uint8_t mode)
+void OLED_Init(SPI_TypeDef* SPIx,uint8_t back_mode)
 { 	 	 
 	GPIO_InitTypeDef 	MyGPIO;
 	OLED_SPI=SPIx;
@@ -93,159 +70,91 @@ void OLED_Init(SPI_TypeDef* SPIx,uint8_t mode)
 	OLED_Write(0xA6,OLED_CMD);// Disable Inverse Display On (0xa6/a7) 
 	OLED_Write(0xAF,OLED_CMD);//--turn on oled panel
 	
-	OLED_Display_On(); /*display ON*/ 
-	OLED_Clear(mode);
+	OLED_Display_On(); /*display ON*/
+	OLED_Clear(back_mode);
+	
+	SHOW_CG();
 
 }
+ void OLED_Write(uint8_t data,uint8_t DC_mode)
+{
+	OLED_CS=0;
+	OLED_DC=DC_mode;
+	SPI_ReadWriteByte(OLED_SPI,data);
+	OLED_CS=1;
+}
+
 /**************************************************/
-//	Description:	This function 
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
+//	Note:	you must call this function after
+//				initializing ssd1106
 /**************************************************/
-void OLED_Set_Pos(unsigned char x, unsigned char y) 
-{ 
-	OLED_Write(0xb0+y,OLED_CMD);
-	OLED_Write(((x&0xf0)>>4)|0x10,OLED_CMD);
-	OLED_Write((x&0x0f)|0x01,OLED_CMD); 
-}   
-/**************************************************/
-//	Description:	This function turn on the display
-//	Author:			qi.yue
-//	param:			void
-//	Return:			void
-//	Note:			you must call this function after
-//					initializing ssd1106
-/**************************************************/  
 void OLED_Display_On(void)
 {
 	OLED_Write(0X8D,OLED_CMD);  //SET DCDC Command
 	OLED_Write(0X14,OLED_CMD);  //DCDC ON
 	OLED_Write(0XAF,OLED_CMD);  //DISPLAY ON
 }
-/**************************************************/
-//	Description:	This function turn off the display
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
-/**************************************************/
 void OLED_Display_Off(void)
 {
 	OLED_Write(0X8D,OLED_CMD);  //SET DCDC Command
 	OLED_Write(0X10,OLED_CMD);  //DCDC OFF
 	OLED_Write(0XAE,OLED_CMD);  //DISPLAY OFF
-}		   			 
+}
+
 /**************************************************/
-//	Description:	This function clean the display
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
+//	Note:	mode 0,clear to black,
+//						 1,clear to white
 /**************************************************/
-void OLED_Clear(uint8_t mode)  
+void OLED_Clear(uint8_t back_mode)  
 {  
 	u8 i,n;
-	if(mode)mode=0xff;
+	if(back_mode)back_mode=0xff;
 	for(i=0;i<8;i++)  
 	{  
 		OLED_Write (0xb0+i,OLED_CMD);    //setting page（0~7）
 		OLED_Write (0x00,OLED_CMD);      //setting display position - addr of low col
 		OLED_Write (0x10,OLED_CMD);      //setting display position - addr of hagh col
-		for(n=0;n<128;n++)OLED_Write(mode,OLED_DATA); 
+		for(n=0;n<128;n++)OLED_Write(back_mode,OLED_DATA); 
 	} 
 }
+
+
 /**************************************************/
-//	Description:	This function show a character 
-//					at specified position
-//	Author:			qi.yue
-//	param:			u8 x: x:0~127
-//					u8 y: y:0~63
-//					u8 chr:the character witch will be displayed
-//					u8 mode : character color 0:black, 1:white
-//	Return:			void
-//	Note:			void
+//u8 x: x:0~127
+//u8 y: y:0~7
+void OLED_Set_Pos(unsigned char x, unsigned char y) 
+{ 
+	OLED_Write(0xb0+y,OLED_CMD);
+	OLED_Write(((x&0xf0)>>4)|0x10,OLED_CMD);
+	OLED_Write((x&0x0f),OLED_CMD); 
+} 
+
 /**************************************************/
-void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 mode)
+//u8 x: x:0~127
+//u8 y: y:0~63
+void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 back_mode)
 {      	
 	unsigned char c=0,i=0;	
 		c=chr-' ';	
 		if(x>Max_Column-1){x=0;y=y+2;}
-		if(SIZE ==16)
-			{
-			OLED_Set_Pos(x,y);	
-			for(i=0;i<8;i++)
-			OLED_Write(F8X16[c*16+i]^(0xff*mode),OLED_DATA);
-			OLED_Set_Pos(x,y+1);
-			for(i=0;i<8;i++)
-			OLED_Write(F8X16[c*16+i+8]^(0xff*mode),OLED_DATA);
-			}
-			else {	
-				OLED_Set_Pos(x,y+1);
-				for(i=0;i<6;i++)
-				OLED_Write(F6x8[c][i]^(0xff*mode),OLED_DATA);
-			}
-}
-u32 oled_pow(u8 m,u8 n)
-{
-	u32 result=1;	 
-	while(n--)result*=m;    
-	return result;
-}	
+		OLED_Set_Pos(x,y);	
 
-/**************************************************/
-//	Description:	This function show a number
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
-/**************************************************/ 		  
-void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 size)
-{         	
-	u8 t,temp;
-	u8 enshow=0;						   
-	for(t=0;t<len;t++)
-	{
-		temp=(num/oled_pow(10,len-t-1))%10;
-		if(enshow==0&&t<(len-1))
-		{
-			if(temp==0)
-			{
-				OLED_ShowChar(x+(size/2)*t,y,' ',0);
-				continue;
-			}else enshow=1; 
-		 	 
-		}
-	 	OLED_ShowChar(x+(size/2)*t,y,temp+'0',0); 
-	}
-} 
-/**************************************************/
-//	Description:	This function show a string
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
-/**************************************************/ 	
-void OLED_ShowString(u8 x,u8 y,u8 *chr,u8 mode)
+		for(i=0;i<6;i++)
+		OLED_Write(F6x8[c][i]^(0xff*back_mode),OLED_DATA);
+}
+
+void OLED_ShowString(u8 x,u8 y,u8 *chr,u8 back_mode)
 {
 	unsigned char j=0;
-	y-=2;
+
 	while (chr[j]!='\0')
-	{		OLED_ShowChar(x,y,chr[j],mode);
-		x+=(SIZE == 16)?8:6;
-//		if(x>120){x=0;y+=2;}
-		if(x>120)return;
+	{		OLED_ShowChar(x,y,chr[j],back_mode);
+			x+=6;
+			if(x>120){x=0;y+=2;}
 			j++;
 	}
 }
-/**************************************************/
-//	Description:	This function show a Chinese word
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
-/**************************************************/ 	
+
 void OLED_ShowCHinese(u8 x,u8 y,u8 no,u8 size)
 {      			    
 	u8 t,adder=0;
@@ -263,13 +172,6 @@ void OLED_ShowCHinese(u8 x,u8 y,u8 no,u8 size)
       }					
 }
 /***********功能描述：显示显示BMP图片128×64起始点坐标(x,y),x的范围0～127，y为页的范围0～7*****************/
-/**************************************************/
-//	Description:	This function show a bmp picture
-//	Author:			qi.yue
-//	param:			
-//	Return:			void
-//	Note:			void
-/**************************************************/ 	
 void OLED_DrawBMP(unsigned char x0, unsigned char y0,unsigned char x1, unsigned char y1,unsigned char BMP[])
 { 	
  unsigned int j=0;
@@ -286,276 +188,28 @@ void OLED_DrawBMP(unsigned char x0, unsigned char y0,unsigned char x1, unsigned 
 	    }
 	}
 } 
-
-
-///*
-//功能：OLED打印
-//x		：起始横坐标 0-127
-//y		：起始行		 0-7
-//mode：反白显示	 0：关闭	1：开启
-//size：字体大小	 12：6*8		16：8*16
-//*/
-//void OLED_Printf(uint8_t x,uint8_t y,uint8_t mode,uint16_t size ,const char *str ,...)
-//{
-//	va_list ap;
-//	int cnt;
-//	char val;
-//	SIZE=size;
-//	va_start(ap,str);
-
-//	va_arg(ap,int);
-//	va_end(ap);
-//}
-/****************************Function of Drawing***************************************/
-u8 OLED_GRAM[8][128];
-/**************************************************************/
-//	Description:	This function can draw a point
-//	Author:			qi.yue
-//	param:			u8 x,y:	position of the point
-//					ut t:	1 : light on; 0 :light off
-//	Return:			void
-//	Note:			x 0~127; y,0~63
-/**************************************************************/
-void OLED_DrawPoint(u8 x,u8 y,u8 t)
+void Show_ClkNum(uint8_t x,uint8_t y,char n,char font)
 {
-	u8 pos,bx,temp=0;
-	if(x>127||y>63)return;//超出范围了.
-	pos=y/8;
-	bx=y%8;
-	temp=1<<bx;
-	if(t)OLED_GRAM[pos][x]|=temp;
-	else OLED_GRAM[pos][x]&=~temp;	    
-}
-/************************************************************/
-//	Description:	This function can draw a line
-//	Author:			qi.yue 
-//	param:			int x1,y1:	starting point
-//					int x2,y2:	ending point
-//					int color:	the pixel light on or off,
-//								on : 1, off : 0
-//	Return:			void
-//	Note:			x1,x2 0~127; y1,y2 0~63
-/***********************************************************/
-void OLED_DrawLine(int x1,int y1,int x2,int y2,int color)
-{
-    int dx,dy,e;
-    dx=x2-x1; 
-    dy=y2-y1;
-    if(dx>=0)
-    {
-        if(dy >= 0) // dy>=0
-        {
-            if(dx>=dy) // 1/8 octant
-            {
-                e=dy-dx/2;
-                while(x1<=x2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){y1+=1;e-=dx;}   
-                    x1+=1;
-                    e+=dy;
-                }
-            }
-            else        // 2/8 octant
-            {
-                e=dx-dy/2;
-                while(y1<=y2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){x1+=1;e-=dy;}   
-                    y1+=1;
-                    e+=dx;
-                }
-            }
-        }
-        else           // dy<0
-        {
-            dy=-dy;   // dy=abs(dy)
-            if(dx>=dy) // 8/8 octant
-            {
-                e=dy-dx/2;
-                while(x1<=x2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){y1-=1;e-=dx;}   
-                    x1+=1;
-                    e+=dy;
-                }
-            }
-            else        // 7/8 octant
-            {
-                e=dx-dy/2;
-                while(y1>=y2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){x1+=1;e-=dy;}   
-                    y1-=1;
-                    e+=dx;
-                }
-            }
-        }   
-    }
-    else //dx<0
-    {
-        dx=-dx;     //dx=abs(dx)
-        if(dy >= 0) // dy>=0
-        {
-            if(dx>=dy) // 4/8 octant
-            {
-                e=dy-dx/2;
-                while(x1>=x2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){y1+=1;e-=dx;}   
-                    x1-=1;
-                    e+=dy;
-                }
-            }
-            else        // 3/8 octant
-            {
-                e=dx-dy/2;
-                while(y1<=y2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){x1-=1;e-=dy;}   
-                    y1+=1;
-                    e+=dx;
-                }
-            }
-        }
-        else           // dy<0
-        {
-            dy=-dy;   // dy=abs(dy)
-            if(dx>=dy) // 5/8 octant
-            {
-                e=dy-dx/2;
-                while(x1>=x2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){y1-=1;e-=dx;}   
-                    x1-=1;
-                    e+=dy;
-                }
-            }
-            else        // 6/8 octant
-            {
-                e=dx-dy/2;
-                while(y1>=y2)
-                {
-                    OLED_DrawPoint(x1,y1,color);
-                    if(e>0){x1-=1;e-=dy;}   
-                    y1-=1;
-                    e+=dx;
-                }
-            }
-        }   
-    }
-}
-/**********************************************************/
-//	Description:	This function can draw a circle. draw 1/8 of 
-//					circle,then draw others parts based on symmetry
-//	Author:			qi.yue 
-//	param:			int x,y:	The position ot the center of the circle
-//					int r:		the range of the circle
-//					color:		the pixel light on or off,
-//								on : 1, off : 0
-//	Return:			void
-//	Note:   ---------------->X
-//          |(0,0)   0
-//          |     7     1
-//          |    6       2
-//          |     5     3
-//       (Y)V        4
-//
-//      L = x^2 + y^2 - r^2
-/***********************************************************/
-void OLED_DrawCircle(int x, int y, int r, int color)
-{
-    int a, b, num;
-    a = 0;
-    b = r;
-    while(2 * b * b >= r * r)          // 1/8圆即可
-    {
-        OLED_DrawPoint(x + a, y - b,color); // 0~1
-        OLED_DrawPoint(x - a, y - b,color); // 0~7
-        OLED_DrawPoint(x - a, y + b,color); // 4~5
-        OLED_DrawPoint(x + a, y + b,color); // 4~3
- 
-        OLED_DrawPoint(x + b, y + a,color); // 2~3
-        OLED_DrawPoint(x + b, y - a,color); // 2~1
-        OLED_DrawPoint(x - b, y - a,color); // 6~7
-        OLED_DrawPoint(x - b, y + a,color); // 6~5
-        
-        a++;
-        num = (a * a + b * b) - r*r;
-        if(num > 0)
-        {
-            b--;
-            a--;
-        }
-    }
-}
+	char i,j,line;
+	char *p=NULL;
 
-/**********************************************************/
-//	Description:	This function can draw a rectangle
-//	Author:			qi.yue 
-//	param:			u8 x1,y1:	starting point
-//					u8 x2,y2:	ending point
-//					mode:		the pixel light on or off,
-//								on : 1, off : 0
-//	Return:			void
-//	Note:			x,x0 0~127; Y,Y0 0~63
-void OLED_DrawRectangle(u8 x1,u8 y1,u8 x2,u8 y2,u8 mode)
-{
-	OLED_DrawLine(x1,y1,x2,y1,mode);
-	OLED_DrawLine(x1,y1,x1,y2,mode);
-	OLED_DrawLine(x2,y2,x2,y1,mode);
-	OLED_DrawLine(x2,y2,x1,y2,mode);
-}
-void OLED_Refresh_GRAM(void)
-{ 
- unsigned char x,y;
-  
-	for(y=0;y<7;y++)
+	if(font) 
 	{
-		OLED_Set_Pos(0,y);
-    for(x=0;x<127;x++)
-	    {      
-	    	OLED_Write(OLED_GRAM[y][x],OLED_DATA);	    	
-	    }
+		line=4;
+		p=Clock_Num20X32[line*n];
 	}
+	else
+	{		
+		line=2;
+		p=Clock_Num10X16[line*n];
+	}
+	
+		for(i=line*n;i<n*line+line;i++,y++)
+		{
+			OLED_Set_Pos(x,y);
+			for (j=0;j<5*line/(n/10+1);j++,p++)
+			{
+				OLED_Write(*p,OLED_DATA);
+			}
+		}
 }
-/**********************************************************/
-//	Description:	This function will clean the anaiog 
-//					Oled memory OLED_GRAM[8][128]
-//	Author:			qi.yue
-//	param:			void
-//	Return:			void
-//	Note:			None
-/*********************************************************/
-
-void OLED_Clean_GRAM(void)
-{
- unsigned char x,y;
- 
-	for(y=0;y<7;y++)
-    for(x=0;x<127;x++)         
-				OLED_GRAM[y][x]=0;	    	
-}
-/**********************************************************/
-//	Description:	This function will draw a grid on OLED
-//	Author:			qi.yue
-//	param:			char x0:	initial x position 0~127
-//					char y0:	initial y position 0~63
-//					char col:	the grid's columns
-//					char lin:	the grid's lines
-//					char size:	the size of every grid
-//	Return:			void
-//	Note:			None
-/*********************************************************/
-//void Draw_Grid(char x0,char y0,char x,char y,char n)
-//{
-
-
-
-//}
