@@ -1,6 +1,5 @@
 #include "oledgui.h"
 #include "oledfont.h"  
-#include "bmp.h"  
 
 extern void OLED_Set_Pos(unsigned char x, unsigned char y) ;
 /**************************************************/
@@ -45,23 +44,23 @@ void OLED_ShowCHinese(u8 x,u8 y,u8 no,u8 size)
 				adder+=1;
       }					
 }
-/***********功能描述：显示显示BMP图片128×64起始点坐标(x,y),x的范围0～127，y为页的范围0～7*****************/
-void OLED_DrawBMP(unsigned char x0, unsigned char y0,unsigned char x1, unsigned char y1,unsigned char BMP[])
-{ 	
- unsigned int j=0;
- unsigned char x,y;
-  
-  if(y1%8==0) y=y1/8;      
-  else y=y1/8+1;
-	for(y=y0;y<y1;y++)
-	{
-		OLED_Set_Pos(x0,y);
-    for(x=x0;x<x1;x++)
-	    {      
-	    	OLED_Write(BMP[j++],OLED_DATA);	    	
-	    }
-	}
-} 
+///***********功能描述：显示显示BMP图片128×64起始点坐标(x,y),x的范围0～127，y为页的范围0～7*****************/
+//void OLED_DrawBMP(unsigned char x0, unsigned char y0,unsigned char x1, unsigned char y1,unsigned char BMP[])
+//{ 	
+// unsigned int j=0;
+// unsigned char x,y;
+//  
+//  if(y1%8==0) y=y1/8;      
+//  else y=y1/8+1;
+//	for(y=y0;y<y1;y++)
+//	{
+//		OLED_Set_Pos(x0,y);
+//    for(x=x0;x<x1;x++)
+//	    {      
+//	    	OLED_Write(BMP[j++],OLED_DATA);	    	
+//	    }
+//	}
+//} 
 void Show_ClkNum(uint8_t x,uint8_t y,char n,char font)
 {
 	char i,j,line;
@@ -295,6 +294,23 @@ void OLED_DrawCircle(int x, int y, int r, int color)
         }
     }
 }
+void OLED_DrawBMP(uint8_t pos_x,uint8_t pos_y,uint8_t size_x,uint8_t size_y,uint8_t addr[])
+{
+ unsigned int j=0;
+ unsigned char x,y;
+  
+  if(size_y%8==0) size_y=size_y/8;      
+  else size_y=size_y/8+1;
+	for(y=pos_y;y<pos_y+size_y;y++)
+	{
+    for(x=pos_x;x<size_x;x++,addr++)
+	    { 
+				OLED_GRAM[y][x]=*addr;					
+	    }
+	}
+
+
+}
 void OLED_Refresh_GRAM(uint8_t op)
 { 
  unsigned char x,y;
@@ -309,6 +325,7 @@ void OLED_Refresh_GRAM(uint8_t op)
 	    }
 	}
 }
+
 /**********************************************************/
 //	Description:	This function will clean the anaiog 
 //					Oled memory OLED_GRAM[8][128]
@@ -320,7 +337,7 @@ void OLED_Refresh_GRAM(uint8_t op)
 
 void OLED_Clean_GRAM(uint8_t t)
 {
-	memset(&OLED_GRAM[0][0],t,8*128);	
+	memset(OLED_GRAM,t,8*128);	
 }
 /**********************************************************/
 //	Description:	This function will draw a grid on OLED
@@ -339,46 +356,3 @@ void OLED_Clean_GRAM(uint8_t t)
 
 
 //}
-void SHOW_CG(void)
-{
-	signed char x1=63,y1=31,x2=64,y2=32,i;
-	
-	for(i=0;i<4;i++){
-		show_loading(1,1,44);delay_ms(200);
-		show_loading(2,1,44);delay_ms(200);
-		show_loading(3,1,44);delay_ms(200);
-		show_loading(2,1,44);delay_ms(200);
-	}
-	do
-	{
-		OLED_DrawRectangle(x1,y1,x2,y2,1);
-		OLED_DrawRectangle(x1-1,y1,x2+1,y2,1);
-		OLED_Refresh_GRAM(1);
-		delay_ms(10);
-		x1-=2;y1--;x2+=2;y2++;
-	}while(x1>0);
-}
-
-
-void show_loading(u8 count,u8 start_lin,u8 start_col)// 1 44
-{
-	signed char i,j,k;
-	u8 *p;
-
-		for(i=0;i<5;i++)
-		{
-			p=&OLED_GRAM[start_lin+i][start_col];
-				for (j=0;j<40;j++,p++)
-				{
-					switch (count)
-					{
-						case 1:*p=(LOAD1[i][j]);break;
-						case 2:*p=(LOAD2[i][j]);break;
-						case 3:*p=(LOAD3[i][j]);break;
-						default :break;
-					}
-				}
-		}	
-		OLED_Refresh_GRAM(1);
-
-}

@@ -1,7 +1,8 @@
 #ifndef __SYS_H
 #define __SYS_H	
 #include "stm32f10x.h"
-#include  <lib_mem.h>
+#include "includes.h"
+#include "delay.h"
 
 //0,不支持ucos
 //1,支持ucos

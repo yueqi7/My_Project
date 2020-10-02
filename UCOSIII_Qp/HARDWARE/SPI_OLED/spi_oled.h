@@ -1,9 +1,12 @@
 #ifndef __SPI_OLED_H__
 #define	__SPI_OLED_H__
 #include "sys.h"
+#include "spi.h" 
+#include "delay.h"
 
 #define USING_RST
 #define USING_DC
+#define USING_U8g2
 
 
 
@@ -34,7 +37,7 @@
 #define WHITE				1
 
 void OLED_Write(uint8_t data,uint8_t mode);
-void OLED_Init(SPI_TypeDef* SPIx,uint8_t back_mode);
+void OLED_Init(uint8_t back_mode);
 void OLED_Display_On(void);
 void OLED_Display_Off(void);	   							   		    
 void OLED_Clear(uint8_t back_mode);
